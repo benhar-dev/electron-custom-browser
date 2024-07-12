@@ -21,7 +21,7 @@ This is a proof of concept that you can create a custom browser with extended fu
 
 ## Screenshot
 
-![image](./docs/Images/Screenshot.gif)
+![image](./docs/images/Screenshot.gif)
 
 ## This demo has the following features
 
