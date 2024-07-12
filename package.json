@@ -1,0 +1,43 @@
+{
+  "name": "electron-custom-browser",
+  "version": "1.0.0",
+  "description": "ecBrowser for HMI applications",
+  "main": "./src/main.js",
+  "scripts": {
+    "start": "electron ./src/main.js",
+    "start-example-fullscreen": "electron ./src/main.js --url=\"https://example.com\"",
+    "start-example-window": "electron ./src/main.js --url=\"https://example.com\" --width=1024 --height=768",
+    "start-example-window-position": "electron ./src/main.js --url=\"https://example.com\" --width=1024 --height=768 --x=10 --y=20",
+    "pre-dist": "license-checker --production --json --customPath './licenses/customFormat.json' > licenses/licenses.json",
+    "make-notices": "npm run pre-dist && node ./licenses/makeNotice.js",
+    "dist": "npm run make-notices && electron-builder"
+  },
+  "build": {
+    "appId": "electron-custom-browser",
+    "productName": "ecBrowser",
+    "directories": {
+      "output": "dist/${os}"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "./assets/icons/icon.ico"
+    },
+    "extraResources": [
+      {
+        "from": "./THIRD-PARTY-NOTICES.txt",
+        "to": "LICENSES.electron.custom.browser.txt"
+      }
+    ]
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "electron-reload": "^2.0.0-alpha.1",
+    "license-checker": "^25.0.1"
+  },
+  "dependencies": {
+    "minimist": "^1.2.8"
+  }
+}
