@@ -19,6 +19,12 @@ in perpetuity.
 
 This is a proof of concept that you can create a custom browser with extended functionality for use with TwinCAT HMI.
 
+## Video Tutorial
+
+There is a free coding byte video tutorial on this code which can be found [here](https://www.youtube.com/watch?v=Gm52ocZ8Crg)
+
+[![image](./docs/images/CodingBytes-MakeBrowserP1.png)](https://www.youtube.com/watch?v=Gm52ocZ8Crg)
+
 ## Screenshot
 
 ![image](./docs/images/Screenshot.gif)
