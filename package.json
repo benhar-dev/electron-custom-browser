@@ -10,7 +10,8 @@
     "start-example-window-position": "electron ./src/main.js --url=\"https://example.com\" --width=1024 --height=768 --x=10 --y=20",
     "pre-dist": "license-checker --production --json --customPath './licenses/customFormat.json' > licenses/licenses.json",
     "make-notices": "npm run pre-dist && node ./licenses/makeNotice.js",
-    "dist": "npm run make-notices && electron-builder"
+    "dist": "npm run make-notices && electron-builder",
+    "start-example-hole": "electron ./src/main.js --url=\"https://example.com\" --width=1024 --height=768 --hole-x=350 --hole-y=220 --hole-width=320 --hole-height=220"
   },
   "build": {
     "appId": "electron-custom-browser",

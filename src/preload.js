@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld("ecBrowser", {
     await invokeIpcCommand("open-window", url, width, height, x, y),
 
   closeWindow: async (handle) => await invokeIpcCommand("close-window", handle),
+
+  setWindowHole: async (x, y, width, height) =>
+    await invokeIpcCommand("set-window-hole", x, y, width, height),
+
+  clearWindowHole: async () => await invokeIpcCommand("clear-window-hole"),
 });
 
 // ---------------------------------------------------------------------------------
