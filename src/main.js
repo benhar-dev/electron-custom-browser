@@ -11,11 +11,52 @@ const argv = process.argv.slice(isPackaged ? 1 : 2);
 const parsedArgs = minimist(argv);
 
 // Check command line arguments, or use default values
+
+function parseOptionalInteger(value) {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === "boolean") {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : undefined;
+}
+
+function getStartupHole(args) {
+  const rawValues = [
+    args["hole-x"],
+    args["hole-y"],
+    args["hole-width"],
+    args["hole-height"],
+  ];
+  const x = parseOptionalInteger(args["hole-x"]);
+  const y = parseOptionalInteger(args["hole-y"]);
+  const width = parseOptionalInteger(args["hole-width"]);
+  const height = parseOptionalInteger(args["hole-height"]);
+  const hasHoleOption = rawValues.some((value) => value !== undefined);
+
+  if (!hasHoleOption) {
+    return null;
+  }
+
+  if ([x, y, width, height].some((value) => value === undefined)) {
+    throw new Error(
+      "Window hole startup options require --hole-x, --hole-y, --hole-width, and --hole-height."
+    );
+  }
+
+  return { x, y, width, height };
+}
+
 const startUrl = parsedArgs.url || "http://127.0.0.1:1010/";
 const startWidth = parseInt(parsedArgs.width, 10) || 800;
 const startHeight = parseInt(parsedArgs.height, 10) || 600;
 const startX = parseInt(parsedArgs.x, 10) || undefined;
 const startY = parseInt(parsedArgs.y, 10) || undefined;
+const startupHole = getStartupHole(parsedArgs);
 const isFullscreen =
   parsedArgs.width === undefined &&
   parsedArgs.height === undefined &&
@@ -24,6 +65,7 @@ const isFullscreen =
 
 // Initialize main window variable
 let mainWindow = null;
+let activeWindowHole = null;
 let windowMap = new Map();
 
 // Function to create the main window with necessary configurations
@@ -58,6 +100,20 @@ function createWindow() {
       }
     }
   );
+
+  mainWindow.on("resize", () => {
+    if (activeWindowHole) {
+      try {
+        applyWindowHole(activeWindowHole, false);
+      } catch (error) {
+        console.error(`Unable to reapply window hole: ${error.message}`);
+      }
+    }
+  });
+
+  if (startupHole) {
+    applyWindowHole(startupHole);
+  }
 }
 
 function loadURLWithRetry(url, interval = 5000) {
@@ -181,6 +237,130 @@ const closeWindow = (event, handle) => {
   windowToClose.close();
 };
 
+
+function ensureWindowShapeSupport() {
+  if (
+    !mainWindow ||
+    typeof mainWindow.setShape !== "function" ||
+    !["win32", "linux"].includes(process.platform)
+  ) {
+    throw new Error(
+      "Window holes require Electron shaped window support, which is currently available on Windows and Linux."
+    );
+  }
+}
+
+function parseHoleValue(value, name) {
+  if (typeof value === "boolean") {
+    throw new Error(`${name} must be an integer.`);
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) {
+    throw new Error(`${name} must be an integer.`);
+  }
+  return parsed;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function normalizeHoleRequest(hole) {
+  const request = {
+    x: parseHoleValue(hole.x, "x"),
+    y: parseHoleValue(hole.y, "y"),
+    width: parseHoleValue(hole.width, "width"),
+    height: parseHoleValue(hole.height, "height"),
+  };
+
+  if (request.width <= 0 || request.height <= 0) {
+    throw new Error("Window hole width and height must be greater than zero.");
+  }
+
+  return request;
+}
+
+function buildShapeAroundHole(hole) {
+  const { width: windowWidth, height: windowHeight } = mainWindow.getBounds();
+  const x = clamp(hole.x, 0, windowWidth);
+  const y = clamp(hole.y, 0, windowHeight);
+  const right = clamp(x + hole.width, 0, windowWidth);
+  const bottom = clamp(y + hole.height, 0, windowHeight);
+
+  if (right <= x || bottom <= y) {
+    throw new Error("Window hole must overlap the current window bounds.");
+  }
+
+  const holeBounds = {
+    x,
+    y,
+    width: right - x,
+    height: bottom - y,
+  };
+
+  const shape = [];
+
+  if (holeBounds.y > 0) {
+    shape.push({ x: 0, y: 0, width: windowWidth, height: holeBounds.y });
+  }
+
+  if (holeBounds.x > 0) {
+    shape.push({
+      x: 0,
+      y: holeBounds.y,
+      width: holeBounds.x,
+      height: holeBounds.height,
+    });
+  }
+
+  const rightStripX = holeBounds.x + holeBounds.width;
+  if (rightStripX < windowWidth) {
+    shape.push({
+      x: rightStripX,
+      y: holeBounds.y,
+      width: windowWidth - rightStripX,
+      height: holeBounds.height,
+    });
+  }
+
+  const bottomStripY = holeBounds.y + holeBounds.height;
+  if (bottomStripY < windowHeight) {
+    shape.push({
+      x: 0,
+      y: bottomStripY,
+      width: windowWidth,
+      height: windowHeight - bottomStripY,
+    });
+  }
+
+  return { holeBounds, shape };
+}
+
+function applyWindowHole(hole, remember = true) {
+  ensureWindowShapeSupport();
+
+  const holeRequest = normalizeHoleRequest(hole);
+  const { holeBounds, shape } = buildShapeAroundHole(holeRequest);
+  mainWindow.setShape(shape);
+
+  if (remember) {
+    activeWindowHole = holeRequest;
+  }
+
+  return holeBounds;
+}
+
+const setWindowHole = (event, x, y, width, height) =>
+  applyWindowHole({ x, y, width, height });
+
+const clearWindowHole = () => {
+  ensureWindowShapeSupport();
+  mainWindow.setShape([]);
+  activeWindowHole = null;
+  return true;
+};
+
 const closeApp = () => {
   app.quit();
 };
@@ -197,4 +377,6 @@ registerIpcHandler("resize", resize);
 registerIpcHandler("take-screenshot", takeScreenshot);
 registerIpcHandler("open-window", openWindow);
 registerIpcHandler("close-window", closeWindow);
+registerIpcHandler("set-window-hole", setWindowHole);
+registerIpcHandler("clear-window-hole", clearWindowHole);
 registerIpcHandler("close-app", closeApp);

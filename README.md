@@ -44,6 +44,10 @@ If you omit both height and width then the application will start full screen.
 | `--x`      | Sets the x of the application window. --y must be included | Any integer value | Window Centered      |
 | `--y`      | Sets the y of the application window. --x must be included | Any integer value | Window Centered      |
 | `--url`    | Specifies the startup URL to load.                         | Any valid URL     | `http://example.com` |
+| `--hole-x` | Sets the x position of a rectangular click-through window hole. Requires all hole options. | Any integer value | No hole |
+| `--hole-y` | Sets the y position of a rectangular click-through window hole. Requires all hole options. | Any integer value | No hole |
+| `--hole-width` | Sets the width of a rectangular click-through window hole. Requires all hole options. | Any positive integer value | No hole |
+| `--hole-height` | Sets the height of a rectangular click-through window hole. Requires all hole options. | Any positive integer value | No hole |
 
 #### Examples
 
@@ -63,6 +67,12 @@ To start the application fullscreen with example.com :
 
 ```bash
 ecBrowser.exe --url="http://example.com"
+```
+
+To start the application with a rectangular hole that lets you see and click applications behind the browser window:
+
+```bash
+ecBrowser.exe --width=1024 --height=768 --hole-x=350 --hole-y=220 --hole-width=320 --hole-height=220
 ```
 
 ### Support of the ecBrowser API
@@ -143,6 +153,38 @@ ecBrowser
   });
 ```
 
+
+#### Creating a click-through window hole
+
+On Windows and Linux, Electron supports shaped windows. ecBrowser uses that feature to remove a rectangular area from the main browser window. The removed area is not drawn by Electron and mouse input falls through to whatever application is behind the browser. macOS does not currently support this Electron shaped-window API, so these calls will reject with an error on macOS.
+
+The hole coordinates are relative to the browser window. If the requested rectangle extends beyond the window, it is clipped to the current window bounds.
+
+```javascript
+// ecBrowser.setWindowHole(x, y, width, height)
+ecBrowser
+  .setWindowHole(350, 220, 320, 220)
+  .then((holeBounds) => {
+    console.log(`Window hole applied`, holeBounds);
+  })
+  .catch((error) => {
+    console.error("Error setting window hole:", error);
+  });
+```
+
+#### Clearing a click-through window hole
+
+```javascript
+ecBrowser
+  .clearWindowHole()
+  .then(() => {
+    console.log("Window hole cleared");
+  })
+  .catch((error) => {
+    console.error("Error clearing window hole:", error);
+  });
+```
+
 ## Getting started
 
 You will be creating an application based on electron. This requires the use of node.js. The steps below will show you how to setup and test the application. Once done there are steps following showing how this could be packaged in to an executable.
@@ -211,6 +253,14 @@ npm run start-example-window-positioned
 # The code below simulates the following,
 # > ecBrowser.exe --url="https://example.com"
 npm run start-example-fullscreen
+```
+
+#### Run windowed with a click-through hole using example.com
+
+```bash
+# The code below simulates the following,
+# > ecBrowser.exe --url="https://example.com" --width=1024 --height=768 --hole-x=350 --hole-y=220 --hole-width=320 --hole-height=220
+npm run start-example-hole
 ```
 
 ### Building for Production
